@@ -1,0 +1,83 @@
+\begin{algorithm}[hbtp]
+\caption{Reading Edge-list from file.}
+\label{alg:csr}
+\begin{algorithmic}[1]
+\Require{$pdegrees$: Per partition vertex degrees (output)}
+\Require{$edges$: Per thread sources, targets, and weights of edges (output)}
+\Require{$data$: Memory mapped file data}
+\Ensure{$counts$: Number of edges read per thread (output)}
+\Ensure{$symmetric$: Is graph symmetric?}
+\Ensure{$weighted$: Is graph weighted?}
+\Ensure{$\beta$: Size of each block that is processed per thread}
+\Ensure{$\rho$: Number of partitions for counting vertex degrees}
+\Ensure{$t$: Current thread}
+
+\Statex
+
+\Function{getBlock}{$data, i$} \label{alg:frontier--main-begin}
+  \State $[d, D] \gets data$
+  \State $b \gets d+i$ \textbf{;} $B \gets min(b+\beta, D)$
+  \If{$b \neq d$ \textbf{and not} $isNewline(b-1)$}
+    \State $b \gets findNextLine(b, D)$
+  \EndIf
+  \If{$B \neq d$ \textbf{and not} $isNewline(B-1)$}
+    \State $B \gets findNextLine(B, D)$
+  \EndIf
+  \Return{$[b, B]$}
+\EndFunction
+
+\Statex
+  
+\Function{readEdgelist}{$pdegrees, edges, data$}
+  \State $counts \gets \{0\}$
+  \State $[sources, targets, weights] \gets edges$
+  \State $\rhd$ Load edges from text file in blocks of size $\beta$
+  \ForAll{$i \in [0, \beta, 2\beta, ... |data|]$ \textbf{in parallel}}
+    \State $j \gets counts[t]$
+    \State $[b, B] \gets getBlock(data, i)$
+    \While{$true$}
+      \State $\rhd$ Read an edge from the block
+      \State $u \gets v \gets 0$ \textbf{;} $w \gets 1$
+      \State $b \gets findNextDigit(b, B)$
+      \If{$b = B$} \textbf{break}
+      \EndIf
+      \State $b \gets parseWholeNumber(u, b, B)$
+      \State $b \gets findNextDigit(b, B)$
+      \State $b \gets parseWholeNumber(v, b, B)$
+      \If{$weighted$}
+        \State $b \gets findNextDigit(b, B)$
+        \State $b \gets parseFloat(w, b, B)$
+      \EndIf
+      \State $\rhd$ Make it zero-based
+      \State $u \gets u - 1$ \textbf{;} $v \gets v - 1$
+      \State $\rhd$ Add the parsed edge to edgelist
+      \State $sources[t][j] \gets u$
+      \State $targets[t][j] \gets v$
+      \If{$weighted$} $weights[t][j] \gets w$
+      \EndIf
+      \State $atomicAdd(pdegrees[t \bmod \rho][u], 1)$
+      \State $j \gets j + 1$
+      \State $\rhd$ If graph is symmetric, add the reverse edge
+      \If{$symmetric$}
+        \State $sources[t][j] \gets v$
+        \State $targets[t][j] \gets u$
+        \If{$weighted$} $weights[t][j] \gets w$
+        \EndIf
+        \State $atomicAdd(pdegrees[t \bmod \rho][v], 1)$
+        \State $j \gets j + 1$
+      \EndIf
+    \EndWhile
+    \State $counts[t] \gets j$
+  \EndFor
+  \Return{$counts$}
+\EndFunction \label{alg:frontier--main-end}
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+%% Parameter setting
+% TOLERANCE = 0.05
+% MAX\_ITERATIONS = 20
+% MAX\_THREADS = 12

@@ -1,0 +1,77 @@
+\begin{algorithm}[hbtp]
+\caption{Convert Edge-list to CSR.}
+\label{alg:csr}
+\begin{algorithmic}[1]
+\Require{$csr$: Global CSR (output)}
+\Require{$pcsr$: Per partition CSR (scratch)}
+\Require{$pdegrees$: Per partition vertex degrees (scratch)}
+\Require{$edges$: Per thread sources, targets, and weights of edges}
+\Require{$counts$: Number of edges read per thread}
+\Ensure{$symmetric$: Is graph symmetric?}
+\Ensure{$weighted$: Is graph weighted?}
+\Ensure{$\rho$: Number of partitions for counting vertex degrees}
+\Ensure{$t$: Current thread}
+
+\Statex
+
+\Function{convertToCsr}{$csr, pcsr, pdegrees, edges, counts$}
+  \State $[offsets, edgeKeys, edgeValues] \gets csr$
+  \State $[poffsets, pedgeKeys, pedgeValues] \gets pcsr$
+  \State $[sources, targets, weights] \gets edges$
+  \State $\rhd$ Compute offsets
+  \ForAll{$p \in [0, \rho)$}
+    \State $exclusiveScan(poffsets[p], pdegrees[p], |V|+1)$
+  \EndFor
+  \State $\rhd$ Populate per-partition CSR
+  \ForAll{\textbf{threads in parallel}}
+    \ForAll{$i \in [0, counts[t])$}
+      \State $u \gets sources[t][i]$
+      \State $v \gets targets[t][i]$
+      \State $j \gets atomicAdd(poffsets[t \bmod \rho][u], 1)$
+      \State $pedgeKeys[t \bmod \rho][j] \gets v$
+      \If{$weighted$}
+        \State $pedgeValues[t \bmod \rho][j] \gets weights[t][i]$
+      \EndIf
+    \EndFor
+  \EndFor
+  \State $\rhd$ Fix per-partition offsets
+  \ForAll{\textbf{threads in parallel}}
+    \If{$t < \rho$}
+      \State $memcpy(poffsets[t]+1, poffsets[t], |V|)$
+      \State $poffsets[t][0] \gets 0$
+    \EndIf
+  \EndFor
+  \State $\rhd$ Combine per-partition offsets
+  \ForAll{$u \in [0, |V|)$ \textbf{in parallel}}
+    \ForAll{$p \in [1, \rho)$}
+      \State $pdegrees[0][u] +\gets pdegrees[p][u]$
+    \EndFor
+  \EndFor
+  \State $\rhd$ Compute global offsets
+  \State $exclusiveScan(offsets, pdegrees[0], |V|+1)$
+  \State $\rhd$ Combine per-partition CSR into one CSR
+  \ForAll{$u \in [0, |V|)$ \textbf{in parallel}}
+    \State $j \gets offsets[u]$
+    \ForAll{$p \in [0, \rho)$}
+      \State $i \gets poffsets[t][u]$
+      \State $I \gets poffsets[t][u+1]$
+      \ForAll{$i \in [i, I)$}
+        \State $edgeKeys[j] \gets pedgeKeys[t][i]$
+        \If{$weighted$}
+          \State $edgeValues[j] \gets pedgeValues[t][i]$
+        \EndIf
+        \State $j \gets j + 1$
+      \EndFor
+    \EndFor
+  \EndFor
+\EndFunction \label{alg:frontier--main-end}
+\end{algorithmic}
+\end{algorithm}
+
+
+
+
+%% Parameter setting
+% TOLERANCE = 0.05
+% MAX\_ITERATIONS = 20
+% MAX\_THREADS = 12
