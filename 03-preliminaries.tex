@@ -1,23 +1,22 @@
-\subsection{PageRank}
-\label{sec:PageRank}
+The choice of graph file format affects loading speed. COO (Coordinate List), MTX (Matrix Market), and other formats have different characteristics, and selecting an appropriate format based on the application and storage considerations is crucial. Memory storage formats, such as Edgelist and CSR (Compressed Sparse Row), impact the efficiency of graph processing algorithms. Choosing the right format can lead to significant performance improvements during both loading and computation.
 
-Consider a directed graph $G(V, E, w)$, with $V$ ($n = |V|$) as the set of vertices and $E$ ($m = |E|$) as the set of edges. The PageRank $R[v]$ of a vertex $v \in V$ in this graph measures its importance based on incoming links and their significance. Equation \ref{eq:pr} defines the PageRank calculation for a vertex $v$ in $G$. $G.in(v)$ and $G.out(v)$ represent incoming and outgoing neighbors of $v$, and $\alpha$ is the damping factor (usually $0.85$). Initially, each vertex has a PageRank of $1/n$, and the \textit{power-iteration} method updates these values iteratively until they converge within a specified tolerance $\tau$, indicating that convergence has been achieved.
+% - File formats
+% - In-memory formats
+% - Memory map
 
-% \begin{equation}
-% \label{eq:pr}
-%     R[v] = \alpha \times \sum_{u \in G.in(v)} \frac{R[u]}{|G.out(u)|} + \frac{1 - \alpha}{n}
-% \end{equation}
+\subsection{Mmemory Mampped IO}
+\label{sec:mmio}
 
+In modern operating systems, memory-mapped I/O (mmio) is an important access method that maps a file or file-like resource to a region of memory. The mapping allows applications to access data from files through memory semantics (i.e., load/store) and it provides ease of programming. The number of applications that use mmio are increasing because memory semantics can provide better performance than file semantics (i.e., read/write). As more data are located in the main memory, the performance of applications can be enhanced owing to the effect of a large cache. When mmio is used, hot data tend to reside in the main memory and cold data are located in storage devices such as HDD and SSD; data placement in the memory hierarchy depends on the virtual memory subsystem of the operating system. Generally, the performance of storage devices has a direct impact on the performance of mmio. It is widely expected that better storage devices will lead to better performance. mmap can effectively extend the main memory with fast storage devices \cite{song2016efficient}.
 
+Memory-mapped I/O (mmio) is emerging as a viable alternative for accessing directly-attached fast storage devices compared to explicit I/O with system calls. Mmio removes the need for costly lookups in the DRAM I/O cache for cache hits, as they are handled in hardware via the virtual memory mechanism \cite{malliotakis2021hugemap}.
 
+Memory-mapped I/O provides several potential advantages over explicit read/write I/O, especially for low latency devices: (1) It does not require a system call, (2) it incurs almost zero overhead for data in memory (I/O cache hits), and (3) it removes copies between kernel and user space \cite{papagiannis2020optimizing}.
 
-\subsection{Gini coefficient}
+With current technology trends for fast storage devices, the host-level I/O path is emerging as a main bottleneck for modern, data-intensive servers and applications. The need to improve I/O performance requires customizing various aspects of the I/O path, including the page cache and the method to access the storage devices \cite{papagiannis2021memory}.
 
-Gini coefficient $G$ is a value which represents income/wealth inequality within a nation or group. It ranges from $0$ to $1$, with $0$ representing total equality and $1$ representing total inequality. It is calculated from the Lorenz curve, which plots cumulative income/wealth against cumulative number of households/people. It is calculated using Equation \ref{eq:gini}, where $A$ is the area between the line of perfect equality and the Lorenz curve, and $B$ is the total area under the line of perfect equality.
+Memory-mapped I/O, which internally uses demand paging, has recently become popular when paired with low-latency storage. It improves I/O performance by mapping the data DMA transfers directly to userspace memory and removing the additional data copy between user/kernel space \cite{li2019userland}.
 
-% \begin{equation}
-% \label{eq:gini}
-%   G = \frac{A}{A+B}
-% \end{equation}
+Kernel FS is a huge overhead for fast storage \cite{yoshimura2019evfs}.
 
 \input{src/tab-dataset}
