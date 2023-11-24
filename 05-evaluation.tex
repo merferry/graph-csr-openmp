@@ -1,21 +1,28 @@
-% EMAIL
-Gunrock is the slowest here, followed by cuhornet, the one i am working on, and PIGO. PIGO is still ~8x faster than my implementation, but it does not support dynamic updates while my implementation does. Reducing loading time in important to enable faster iterations upon our algorithms.
-My implementation inserts into a 2d-vector (or a vector of vectors) and ensures sorted and unique keys upon call to update(). This is faster than doing a binary search upon each addEdge() to check for an edge's existence. I use a custom unique\_merge() function for this - using a small buffer (a bufferless merge is inefficient).
+\subsection{Experimental Setup}
+\label{sec:setup}
 
-I tried a simple file bytes sum using mmap() - both sequential and parallel using openmp (64 threads on DGX). I adjust madvise(), mmap(), and per-thread block size to see which access pattern has the best performance.
-It seems to me using an early madvice(MADV\_WILLNEED), a per-thread block size of 256K (dynamic schedule) is good. Below is a plot showing the time taken with this config for each graph.
+We use a server that has two $16$-core x86-based Intel Xeon Gold 6226R processors running at $2.90$ GHz. Each core has an L1 cache of $1$ MB, an L2 cache of $16$ MB, and a shared L3 cache of $22$ MB. The machine has $93.4$ GB of system memory and runs on CentOS Stream 8. We use GCC 8.5 and OpenMP 4.5. Table \ref{tab:dataset} shows the graphs we use in our experiments. All of them are obtained from the SuiteSparse Matrix Collection \cite{kolodziej2019suitesparse}.
 
-In parallel doing a file byte sum takes ~100ms on indochina-2004 graph. Note that PIGO takes ~650ms to load the same graphs as CSR. Next i measure the read bandwith of each file, simply by dividing the size of each file by the time taken.
+\input{src/tab-dataset}
 
-We appear to be reaching a peak bandwidth of ~35GB/s. The KIOXIA KCM6DRUL7T68 7.68TB NVMe SSD installed on DGX has a peack sequential read performance of 62GB/s (we are close). Sequential approach can hit a max of only 6GB/s.
-https://www.acmemicro.com/Product/17847/Kioxia-KCD6XLUL7T68---7-68TB-SSD-NVMe-2-5-inch-15mm-CD6-R-Series-SIE-PCIe-4-0-6200-MB-sec-Read-BiCS-FLASH-TLC-1-DWPD
+\input{src/fig-runtime}
+\input{src/fig-scaling}
+\input{src/fig-compare-large}
+\input{src/fig-compare-small}
 
-There is a paper called "Efficient Memory Mapped File I/O for In-Memory File Systems" on the topic - where Choi et al. working at Samsung say that mmap() is a good interface for fast IO (in contrast to file streams) and propose async map-ahead based madvise() for low-latency NVM storage devices. The also have a good slides on this - where their (modified) extended madvice obtains ~2.5x better performance than default mmap() by minimizing the number of page faults.
 
-I tried parsing integers from text and saving into per-thread integer lists. To over-allocate memory for per-thread integer-lists i use sufficient size mmap() instead of malloc(). Even if i over-allocate, due to virtual memory, only memory as much i need is actually used.
+In our comparison with Hornet, Gunrock, and PIGO, we observe that:
+
+PIGO has demonstrated superiority over XXX, prompting our exclusion from the comparison.
+The average speedup over Gunrock showcases the efficiency of our approach.
+Similarly, the average speedup over PIGO further highlights the performance benefits of our method.
+Notably, our approach excels on web graphs characterized by power law distributions and high average degrees.
+We present our key findings from the observations in the figure captions.
 
 
 \textbf{Figure 3}:
+
+The efficiency of reading an edgelist stands out, significantly outpacing the speed of reading a graph stored as CSR, which necessitates an additional conversion step. Surprisingly, the average cost of converting an edgelist to CSR is three times higher than simply reading an edgelist from a file. This underscores the notable speed of modern I/O processes. In the sk-2005 dataset, our approach achieves an impressive reading speed of 1.9 billion edges per second. Notably, it's essential to clarify that the table represents edges as directed, not undirected. To visually represent the edge reading performance across different graphs, we propose the inclusion of a plot illustrating this metric. The sluggishness in CSR reading is justified by its nature as a shared data structure, leading to high contention when multiple threads concurrently attempt to add an edge to the same vertex. The process of adding to CSR structures with small degrees is hampered by false sharing, introducing cache coherency issues that contribute to decreased performance.
 
 We observe that:
 - reading edgelist is significantly faster than reading a graph as CSR (this requires and additional conversion step)
@@ -27,19 +34,15 @@ We observe that:
 
 \textbf{Figure 4}:
 
-We observe that:
-- Reading edelis tscales well - scaling upto 25x on 32 threads (amazing).
-- However, at 64 thread, NUMA edffects kick in, killing performance.
-- Note that reading CSR does to scale as good. This is mainly to due the issues mentioned above, i.e., false sharing and contention.
-- NUMA effects are also oberved here.
-- Scaling in multiple of 2 (Y axis is linear, X is logarithmic).
 
-\textbf{Figure 5, 6}:
 
-We obsevre that:
-- Here we compare performance of GVEL (our approach) with Hornet, Gunroack, and PIGO.
-- We do not compre with XXX becuase PIGO has already show superioty over them.
-- Add obervation from caption.
-- Average speedup over Gunrock...
-- Average speedup over PIGO
-- Our approach is especially faster on web graphs which exhibit power law and high avg degrees.
+Our observations reveal:
+
+Reading edgelists exhibits impressive scalability, achieving a remarkable 25x scale on 32 threads.
+However, at 64 threads, performance is impacted by NUMA effects.
+Notably, reading CSR does not scale as well, primarily due to issues such as false sharing and contention.
+The influence of NUMA effects is also discernible in CSR reading performance.
+The scaling pattern follows multiples of 2 (linear Y-axis, logarithmic X-axis).
+
+% There is a paper called "Efficient Memory Mapped File I/O for In-Memory File Systems" on the topic - where Choi et al. working at Samsung say that mmap() is a good interface for fast IO (in contrast to file streams) and propose async map-ahead based madvise() for low-latency NVM storage devices. The also have a good slides on this - where their (modified) extended madvice obtains ~2.5x better performance than default mmap() by minimizing the number of page faults.
+% I tried parsing integers from text and saving into per-thread integer lists. To over-allocate memory for per-thread integer-lists i use sufficient size mmap() instead of malloc(). Even if i over-allocate, due to virtual memory, only memory as much i need is actually used.

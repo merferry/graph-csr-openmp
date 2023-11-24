@@ -1,27 +1,28 @@
-%% GRAPH STORAGE AND IN-MEMORY FORMATS
-%% MEMORY MAPPED IO
-%% STREAM METHODS IN C++
-%% NUMBER PARSING METHODS IN C++
+\subsection{Graph Storage and In-Memory Formats}
 
-The choice of graph file format affects loading speed. COO (Coordinate List), MTX (Matrix Market), and other formats have different characteristics, and selecting an appropriate format based on the application and storage considerations is crucial. Memory storage formats, such as Edgelist and CSR (Compressed Sparse Row), impact the efficiency of graph processing algorithms. Choosing the right format can lead to significant performance improvements during both loading and computation.
+Graphs can be stored in either text or binary formats. Text formats, such as edgelists, provide a simple representation where each line denotes an edge between two vertices (optionally including edge weights and other attributes). While text formats are space-inefficient compared to binary formats, their readability and ease of sharing contribute to their widespread adoption in the public domain. Matrix Market Format (MTX) is a standardized text format with headers specifying the matrix's properties, making it suitable for various sparse matrix representations.
 
-% - File formats
-% - In-memory formats
-% - Memory map
+In-memory graph formats, on the other hand, optimize for efficient data access during computation. These include edgelists, which mirror the structure of the edgelist storage format. To improve data locality, the source vertex, target vertex, and edge weights may be stored in separate arrays. This format is easily convertible from edgelist storage, and is suitable for graph algorithms requiring edge-oriented computation. Compressed Sparse Row (CSR) is another popular in-memory format that is optimal for vertex-oriented algorithms, such as traversal. It stores graph data in three arrays: one for offsets to the list of target vertices / edge weights of each vertex, one for target vertices (for each vertex), and one for edge weights (for each vertex).
 
-\subsection{Mmemory Mampped IO}
-\label{sec:mmio}
 
-In modern operating systems, memory-mapped I/O (mmio) is an important access method that maps a file or file-like resource to a region of memory. The mapping allows applications to access data from files through memory semantics (i.e., load/store) and it provides ease of programming. The number of applications that use mmio are increasing because memory semantics can provide better performance than file semantics (i.e., read/write). As more data are located in the main memory, the performance of applications can be enhanced owing to the effect of a large cache. When mmio is used, hot data tend to reside in the main memory and cold data are located in storage devices such as HDD and SSD; data placement in the memory hierarchy depends on the virtual memory subsystem of the operating system. Generally, the performance of storage devices has a direct impact on the performance of mmio. It is widely expected that better storage devices will lead to better performance. mmap can effectively extend the main memory with fast storage devices \cite{song2016efficient}.
 
-Memory-mapped I/O (mmio) is emerging as a viable alternative for accessing directly-attached fast storage devices compared to explicit I/O with system calls. Mmio removes the need for costly lookups in the DRAM I/O cache for cache hits, as they are handled in hardware via the virtual memory mechanism \cite{malliotakis2021hugemap}.
 
-Memory-mapped I/O provides several potential advantages over explicit read/write I/O, especially for low latency devices: (1) It does not require a system call, (2) it incurs almost zero overhead for data in memory (I/O cache hits), and (3) it removes copies between kernel and user space \cite{papagiannis2020optimizing}.
+\subsection{Memory-Mapped I/O}
 
-With current technology trends for fast storage devices, the host-level I/O path is emerging as a main bottleneck for modern, data-intensive servers and applications. The need to improve I/O performance requires customizing various aspects of the I/O path, including the page cache and the method to access the storage devices \cite{papagiannis2021memory}.
+Memory-mapped I/O (MMIO) is an access method that maps files or file-like resources to a memory region, providing applications with data access through memory semantics. \texttt{mmap()}, a key system call in memory-mapped I/O, is used to map files into memory, establishing a virtual memory mapping between the process's address space and the file or device. When a thread accesses a page that has not yet been loaded from the file, a page fault occurs, and the thread is put into sleep by the kernel until data from the file has been loaded into the page. The \texttt{madvise()} system call allows programmers to advise the kernel about their expected access patterns for the mapped region, optimizing performance. Subsequently, \texttt{munmap()} is employed to unmap the region, freeing up resources.
 
-Memory-mapped I/O, which internally uses demand paging, has recently become popular when paired with low-latency storage. It improves I/O performance by mapping the data DMA transfers directly to userspace memory and removing the additional data copy between user/kernel space \cite{li2019userland}.
+MMIO has reduced overhead and eliminates copies between kernel and user space \cite{malliotakis2021hugemap, papagiannis2020optimizing}. Hot data typically resides in main memory, leveraging the benefits of a large cache, while cold data are stored on devices such as HDDs and SSDs \cite{song2016efficient}. The increasing adoption of MMIO is driven by its superior performance, particularly in comparison to file semantics like read/write operations which introduces significant overhead for fast storage \cite{yoshimura2019evfs, enberg2022transcending}. 
 
-Kernel FS is a huge overhead for fast storage \cite{yoshimura2019evfs}.
 
-\input{src/tab-dataset}
+
+
+\subsection{Stream Operations in C++}
+
+The Standard Template Library (STL) in C++ offers a suite of stream classes and methods. C++ stream classes include \texttt{ifstream} for input file streams and \texttt{ofstream} for output file streams. The \texttt{istream} and \texttt{ostream} interfaces provide a common set of methods for reading and writing data. The \texttt{>>} and \texttt{<<} operators are overloaded for various data types and provide read and writing of data from and to streams, while \texttt{getline()} method reads a line from the stream. C++ streams use an internal buffer to optimize I/O operations.
+
+
+
+
+\subsection{Number Parsing Methods in C++}
+
+C++ provides several methods for converting textual data to numerical representations. \texttt{sscanf()} is a powerful method for parsing formatted input strings. It operates similarly to `printf` and allows developers to define a format specifier that describes the expected structure of the input string. On the other hand, \texttt{strtoull()} and \texttt{strtod()} offer a simple and direct approach for converting strings to unsigned long long integers and double-precision floating-point numbers, respectively. Performance-wise, \texttt{sscanf()} might involve a bit more overhead due to the need to interpret format specifiers, while \texttt{strtoull} and \texttt{strtod} provide straightforward conversions without the need for format strings.
