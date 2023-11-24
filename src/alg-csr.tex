@@ -15,15 +15,15 @@
 \Statex
 
 \Function{convertToCsr}{$csr, pcsr, pdegrees, edges, counts$}
-  \State $[offsets, edgeKeys, edgeValues] \gets csr$
+  \State $[offsets, edgeKeys, edgeValues] \gets csr$ \label{alg:csr--initialize-begin}
   \State $[poffsets, pedgeKeys, pedgeValues] \gets pcsr$
-  \State $[sources, targets, weights] \gets edges$
+  \State $[sources, targets, weights] \gets edges$ \label{alg:csr--initialize-end}
   \State $\rhd$ Compute offsets
-  \ForAll{$p \in [0, \rho)$}
+  \ForAll{$p \in [0, \rho)$} \label{alg:csr--poffsets-begin}
     \State $exclusiveScan(poffsets[p], pdegrees[p], |V|+1)$
-  \EndFor
+  \EndFor \label{alg:csr--poffsets-end}
   \State $\rhd$ Populate per-partition CSR
-  \ForAll{\textbf{threads in parallel}}
+  \ForAll{\textbf{threads in parallel}} \label{alg:csr--pcsr-begin}
     \ForAll{$i \in [0, counts[t])$}
       \State $u \gets sources[t][i]$
       \State $v \gets targets[t][i]$
@@ -33,24 +33,24 @@
         \State $pedgeValues[t \bmod \rho][j] \gets weights[t][i]$
       \EndIf
     \EndFor
-  \EndFor
+  \EndFor \label{alg:csr--pcsr-end}
   \State $\rhd$ Fix per-partition offsets
-  \ForAll{\textbf{threads in parallel}}
+  \ForAll{\textbf{threads in parallel}} \label{alg:csr--poffsets-fix-begin}
     \If{$t < \rho$}
       \State $memcpy(poffsets[t]+1, poffsets[t], |V|)$
       \State $poffsets[t][0] \gets 0$
     \EndIf
-  \EndFor
-  \State $\rhd$ Combine per-partition offsets
-  \ForAll{$u \in [0, |V|)$ \textbf{in parallel}}
+  \EndFor \label{alg:csr--poffsets-fix-end}
+  \State $\rhd$ Combine per-partition degrees
+  \ForAll{$u \in [0, |V|)$ \textbf{in parallel}} \label{alg:csr--poffsets-combine-begin}
     \ForAll{$p \in [1, \rho)$}
       \State $pdegrees[0][u] +\gets pdegrees[p][u]$
     \EndFor
-  \EndFor
+  \EndFor \label{alg:csr--poffsets-combine-end}
   \State $\rhd$ Compute global offsets
-  \State $exclusiveScan(offsets, pdegrees[0], |V|+1)$
+  \State $exclusiveScan(offsets, pdegrees[0], |V|+1)$ \label{alg:csr--offsets-compute}
   \State $\rhd$ Combine per-partition CSR into one CSR
-  \ForAll{$u \in [0, |V|)$ \textbf{in parallel}}
+  \ForAll{$u \in [0, |V|)$ \textbf{in parallel}} \label{alg:csr--pcsr-combine-begin}
     \State $j \gets offsets[u]$
     \ForAll{$p \in [0, \rho)$}
       \State $i \gets poffsets[t][u]$
@@ -63,7 +63,7 @@
         \State $j \gets j + 1$
       \EndFor
     \EndFor
-  \EndFor
+  \EndFor \label{alg:csr--pcsr-combine-end}
 \EndFunction
 \end{algorithmic}
 \end{algorithm}

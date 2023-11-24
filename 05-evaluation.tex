@@ -5,44 +5,63 @@ We use a server that has two $16$-core x86-based Intel Xeon Gold 6226R processor
 
 \input{src/tab-dataset}
 
-\input{src/fig-runtime}
-\input{src/fig-scaling}
 \input{src/fig-compare-large}
 \input{src/fig-compare-small}
-
-
-In our comparison with Hornet, Gunrock, and PIGO, we observe that:
-
-PIGO has demonstrated superiority over XXX, prompting our exclusion from the comparison.
-The average speedup over Gunrock showcases the efficiency of our approach.
-Similarly, the average speedup over PIGO further highlights the performance benefits of our method.
-Notably, our approach excels on web graphs characterized by power law distributions and high average degrees.
-We present our key findings from the observations in the figure captions.
-
-
-\textbf{Figure 3}:
-
-The efficiency of reading an edgelist stands out, significantly outpacing the speed of reading a graph stored as CSR, which necessitates an additional conversion step. Surprisingly, the average cost of converting an edgelist to CSR is three times higher than simply reading an edgelist from a file. This underscores the notable speed of modern I/O processes. In the sk-2005 dataset, our approach achieves an impressive reading speed of 1.9 billion edges per second. Notably, it's essential to clarify that the table represents edges as directed, not undirected. To visually represent the edge reading performance across different graphs, we propose the inclusion of a plot illustrating this metric. The sluggishness in CSR reading is justified by its nature as a shared data structure, leading to high contention when multiple threads concurrently attempt to add an edge to the same vertex. The process of adding to CSR structures with small degrees is hampered by false sharing, introducing cache coherency issues that contribute to decreased performance.
-
-We observe that:
-- reading edgelist is significantly faster than reading a graph as CSR (this requires and additional conversion step)
-- in fact, on average, converting an edgelist to CSR is 3 times more costly than reading and edgelist from file (which is quite surprising indded). This shows that modern IO is fastr (dhooom).
-- We are able to read 1.9B edges per second (the table put edges as directed not undirected) in sk-2005.
-- Can we have a plot on edge reading performance per graph
-- (Justify why CSR reading is slow) converting to CSR is slow becuase it is a shared data structure resulting in high contention beteen thread, when multiple threads attempt to add an edge to the same vertex.
-- Also adding to CSR with small degrees suffer from false sharing (cache coherency issue).
-
-\textbf{Figure 4}:
+\input{src/fig-compare-el}
 
 
 
-Our observations reveal:
 
-Reading edgelists exhibits impressive scalability, achieving a remarkable 25x scale on 32 threads.
-However, at 64 threads, performance is impacted by NUMA effects.
-Notably, reading CSR does not scale as well, primarily due to issues such as false sharing and contention.
-The influence of NUMA effects is also discernible in CSR reading performance.
-The scaling pattern follows multiples of 2 (linear Y-axis, logarithmic X-axis).
+\subsection{Performance Comparison for Reading CSR}
+
+We now compare the performance of GVEL for reading CSR, i.e. reading Edgelist and converting it to CSR, with Hornet, Gunrock, and PIGO. For Hornet and Gunrock, we modify an example and/or source code of the framework to measure time taken to load the graph. For PIGO we include the released header-only file and write a program for measure CSR loading time. For each graph, we measure the CSR reading with each framework five times, for averaging. We also attempt to compare with GraphOne, but it appears to crash for all graphs except \textit{indochina-2004}. Figure \ref{fig:compare-large} shows the runtimes of Hornet, Gunrock, PIGO, and GVEL for reading CSR on each graph in the dataset. GVEL is on average $78\times$, $112\times$, and $1.8\times$ faster than Hornet, Gunrock, and PIGO respectively. The CSR reading time for Hornet is not shown for the graphs \textit{uk-2002}, \textit{it-2004}, and \textit{sk-2005} as it crashes while loading. Note that the runtimes of PIGO and GVEL are not visible on the scale of Figure \ref{fig:compare-large} as they are significantly faster than Hornet and Gunrock. Figure \ref{fig:compare-small} accordingly only shows the runtimes of PIGO and GVEL. Here, we observe that GVEL excels on web graphs, which are characterized by power law distributions and high average degrees.
+
+% \input{src/fig-runtime}
+\input{src/fig-scaling}
+
+% The efficiency of reading an edgelist stands out, significantly outpacing the speed of reading a graph stored as CSR, which necessitates an additional conversion step. Surprisingly, the average cost of converting an edgelist to CSR is three times higher than simply reading an edgelist from a file. This underscores the notable speed of modern I/O processes. In the sk-2005 dataset, our approach achieves an impressive reading speed of 1.9 billion edges per second. Notably, it's essential to clarify that the table represents edges as directed, not undirected. To visually represent the edge reading performance across different graphs, we propose the inclusion of a plot illustrating this metric. The sluggishness in CSR reading is justified by its nature as a shared data structure, leading to high contention when multiple threads concurrently attempt to add an edge to the same vertex. The process of adding to CSR structures with small degrees is hampered by false sharing, introducing cache coherency issues that contribute to decreased performance.
+
+
+
+
+\subsection{Performance Comparison for Reading Edgelist}
+
+In Figure \ref{fig:compare-el}, we compare the performance of GVEL for reading Edgelist with PIGO. As before, we measure the Edgelist reading time with each framework five times, for averaging. GVEL is on average $2.6\times$ faster than PIGO - with little skew, i.e., GVEL is more or less equivalently faster than PIGO on all graphs. This is more probably than not, due to the reading of Edgelist being \textit{pleasingly parallel}. On the \textit{sk-2005} graph, GVEL achieves a reading performance of $1.9$ billion edges/s.
+
+
+
+
+\subsection{Strong Scaling of GVEL}
+
+Finally, we measure the strong scaling performance of GVEL. To this end, we adjust the number of thread from $1$ to $64$ in multiples of $2$ for each input graph, and measure the time taken for reading Edgelist and reading CSR (reading Edgelist + converting to CSR). As for each experiment above, for each graph, and for each thread count, we perform graph loading five times for averaging. The results are shown in Figure \ref{fig:scaling}. With 32 threads, reading Edgelist with GVEL obtains a $25.0\times$ speedup compared to running with a single thread, i.e., the performance of Edgelist reading increases by $1.9\times$ for every doubling of threads. Further, with 32 threads, reading CSR with GVEL obtains a speedup of $13.9\times$ with respect to a single threaded execution, i.e., the CSR reading performance increases by $1.7\times$ for every doubling of threads. This drop in increase of speedup is due that fact that CSR is a shared data structure, leading to high contention when multiple threads concurrently attempt to add an edge to the same vertex, especially for vertices with high degrees. Further, the process of adding edges to vertices with small degrees is hampered by false sharing of cache lines, which contribute to decreased performance. At 64 threads, both reading Edgelist and reading CSR are impacted by NUMA effects, and offer speedups of only $27.2\times$ and $16.4\times$ respectively.
+
+
+
+
+% \textbf{Figure 3}:
+
+
+% We observe that:
+% - reading edgelist is significantly faster than reading a graph as CSR (this requires and additional conversion step)
+% - in fact, on average, converting an edgelist to CSR is 3 times more costly than reading and edgelist from file (which is quite surprising indded). This shows that modern IO is fastr (dhooom).
+% - We are able to read 1.9B edges per second (the table put edges as directed not undirected) in sk-2005.
+% - Can we have a plot on edge reading performance per graph
+% - (Justify why CSR reading is slow) converting to CSR is slow becuase it is a shared data structure resulting in high contention beteen thread, when multiple threads attempt to add an edge to the same vertex.
+% - Also adding to CSR with small degrees suffer from false sharing (cache coherency issue).
+
+% \textbf{Figure 4}:
+
+
+
+
+
+% Our observations reveal:
+
+% Reading edgelists exhibits impressive scalability, achieving a remarkable 25x scale on 32 threads.
+% However, at 64 threads, performance is impacted by NUMA effects.
+% Notably, reading CSR does not scale as well, primarily due to issues such as false sharing and contention.
+% The influence of NUMA effects is also discernible in CSR reading performance.
+% The scaling pattern follows multiples of 2 (linear Y-axis, logarithmic X-axis).
 
 % There is a paper called "Efficient Memory Mapped File I/O for In-Memory File Systems" on the topic - where Choi et al. working at Samsung say that mmap() is a good interface for fast IO (in contrast to file streams) and propose async map-ahead based madvise() for low-latency NVM storage devices. The also have a good slides on this - where their (modified) extended madvice obtains ~2.5x better performance than default mmap() by minimizing the number of page faults.
 % I tried parsing integers from text and saving into per-thread integer lists. To over-allocate memory for per-thread integer-lists i use sufficient size mmap() instead of malloc(). Even if i over-allocate, due to virtual memory, only memory as much i need is actually used.

@@ -1,8 +1,6 @@
 \subsection{Reading Edgelist from text file}
 
-We attempt a number of approaches to read edgelist from text file into in-memory edgelist(s), given in Sections \ref{sec:el-fstream-plain}-\ref{sec:el-mmap-custom}. Among these, we find using \texttt{mmap()} with custom number parsers (\textit{mmap-custom}) to be the best approach. The pseudocode for \textit{mmap-custom} is given Algorithm \ref{alg:el}.
-
-\input{src/alg-el}
+We attempt a number of approaches to read Edgelist from text file into in-memory Edgelist(s), given in Sections \ref{sec:el-fstream-plain}-\ref{sec:el-mmap-custom}. Among these, we find using \texttt{mmap()} with custom number parsers (\textit{mmap-custom}) to be the best approach. The pseudocode for \textit{mmap-custom} is given Algorithm \ref{alg:el}.
 
 
 \subsubsection{\texttt{ifstream} with \texttt{getline()} and \texttt{>>} operator (\textit{fstream-plain})}
@@ -14,67 +12,72 @@ In this approach, we utilize C++'s \texttt{ifstream} to open the file, and read 
 \subsubsection{\texttt{ifstream} with \texttt{getline()} and \texttt{strto*()} (\textit{fstream-strto*})}
 \label{sec:el-fstream-stro*}
 
-In this approach, we again use \texttt{ifstream} but employ string-to-number conversion methods \texttt{strtoull()} and \texttt{strtod()} for parallel number parsing. We sequentially read a block of $L$ lines from the file, using \texttt{getline()}, and then parse each line in parallel using multiple threads. We observe that using OpenMP's dynamic scheduling, with a chunk size of $1024$, and reading a block of $L=128K$ lines to be processed in parallel offers the best performance. Parsed edges (source, target vertex ids, and edge weights) are stored separately in per-thread edge lists to avoid contention issues within a shared data structure. With 64 threads, this approach demonstrates a speedup of XX compared to \textit{fstream-plain}, as shown in Figure \ref{fig:optimize-el}.
+In this approach, we again use \texttt{ifstream} but employ string-to-number conversion methods \texttt{strtoull()} and \texttt{strtod()} for parallel number parsing. We sequentially read a block of $L$ lines from the file, using \texttt{getline()}, and then parse each line in parallel using multiple threads. We observe that using OpenMP's dynamic scheduling, with a chunk size of $1024$, and reading a block of $L=128K$ lines to be processed in parallel offers the best performance. Parsed edges (source, target vertex ids, and edge weights) are stored separately in per-thread edge lists to avoid contention issues within a shared data structure. With 64 threads, this approach demonstrates a speedup of $8.7\times$ compared to \textit{fstream-plain}, as shown in Figure \ref{fig:optimize-el}.
+
+\input{src/fig-optimize-el}
 
 
 \subsubsection{\texttt{fopen()} with \texttt{fgets()} and \texttt{sscanf()} (\textit{fopen-plain})}
 \label{sec:el-fopen-plain}
 
-This approach is similar to the one mentioned above (\textit{fscanf-strto*}), but we use \texttt{fgets()} on a file handle to read lines instead of \texttt{getline()}, and employ \texttt{sscanf()} to parse the edges. With 64 threads, it provided a speedup of X compared to X.
+This approach is similar to the one mentioned above (\textit{fscanf-strto*}), but we use \texttt{fgets()} on a file handle to read lines instead of \texttt{getline()}, and employ \texttt{sscanf()} to parse the edges. With 64 threads, it provided a speedup of $4.0\times$ compared to \textit{fstream-plain}.
 
 
 \subsubsection{\texttt{fopen()} with \texttt{fgets()} and \texttt{strto*()} (\textit{fopen-strto*})}
 \label{sec:el-fopen-strto*}
 
-Similar to the previous approach (\textit{fopen-plain}), this one uses \texttt{fgets()} to read lines from the text file, but replaces \texttt{sscanf()} with \texttt{strtoull()} and \texttt{strtod()}. This proves faster due to the absence of a format string. With 64 threads, it provides a speedup of X over X.
+Similar to the previous approach (\textit{fopen-plain}), this one uses \texttt{fgets()} to read lines from the text file, but replaces \texttt{sscanf()} with \texttt{strtoull()} and \texttt{strtod()}. This proves faster due to the absence of a format string. At 64 threads, its speedup is $1.1\times$ over \textit{fopen-plain}.
 
 
 \subsubsection{\texttt{mmap()} with \texttt{strto*()} (\textit{mmap-strto*})}
 \label{sec:el-mmap-strto*}
 
-In this approach, we map the file to memory with \texttt{mmap()}, and process the edges in parallel by partitioning the file into blocks of $C$ characters. Each block is dynamically assigned (using OpenMP's dynamic schedule) to a free thread. If the assigned block contains partial lines at either end, the thread repositions it, by shifting to the right to eliminate partial lines. This involves skipping the partial line at the beginning and including the partial line from the end. We observe that issuing \texttt{madvice(MADV\_WILLNEED)}, and using a block size of $C=256K$ characters offers the best performance. To parse the source/target vertex ids and edge weights, we use \texttt{strtoull()} and \texttt{strtod()}. Each thread stores the parsed edges in per-thread edgelists.
+In this approach, we map the file to memory with \texttt{mmap()}, and process the edges in parallel by partitioning the file into blocks of $C$ characters. Each block is dynamically assigned (using OpenMP's dynamic schedule) to a free thread. If the assigned block contains partial lines at either end, the thread repositions it, by shifting to the right to eliminate partial lines. This involves skipping the partial line at the beginning and including the partial line from the end. We observe that issuing \texttt{madvice(MADV\_WILLNEED)}, and using a block size of $C=256K$ characters offers the best performance. To parse the source/target vertex ids and edge weights, we use \texttt{strtoull()} and \texttt{strtod()}. Each thread stores the parsed edges in per-thread Edgelists. With 64 threads, it provides a speedup of $58.5\times$ over \textit{fopen-strto*}, as show in Figure \ref{fig:optimize-el}.
 
 
 \subsubsection{\texttt{mmap()} with custom number parsers (\textit{mmap-custom})}
 \label{sec:el-mmap-custom}
 
-This is similar to the approach mentioned above (\textit{mmap-strto*}), but we use our own functions for parsing whole numbers and floating-point numbers. In addition, as vertex ids start with $1$, we decrement $1$ from the vertex ids after parsing it and before appending them to per-thread edgelists. Surprisingly, this leads to $40-50\%$ drop in performance. Converting the $weighted$ flag (see Algorithm \ref{alg:el}) to a template parameter solves this issue. This indicates that the issue was related to the loop code not being able to fit in the code cache of the processor and using a template allowed it to fit in the cache. Accordingly, we also recommend using $symmetric$ flag to be used as a template parameter instead. With 64 threads, it provides a speedup of X over X, as show in Figure \ref{fig:optimize-el}. We also attempted to use custom SIMD instructions to parse numbers, along with \texttt{vzeroupper} instruction to clear SSE/AVX registers, but it did not provide additional performance improvement.
+This is similar to the approach mentioned above (\textit{mmap-strto*}), but we use our own functions for parsing whole numbers and floating-point numbers. In addition, as vertex ids start with $1$, we decrement $1$ from the vertex ids after parsing it and before appending them to per-thread Edgelists. Surprisingly, this leads to $40-50\%$ drop in performance. Converting the $weighted$ flag (see Algorithm \ref{alg:el}) to a template parameter solves this issue. This indicates that the issue was related to the loop code not being able to fit in the code cache of the processor and using a template allowed it to fit in the cache. Accordingly, we also recommend using $symmetric$ flag to be used as a template parameter instead. With 64 threads, it provides a speedup of $3.5\times$ over \textit{mmap-strto*}. We also attempted to use custom SIMD instructions to parse numbers, along with \texttt{vzeroupper} instruction to clear SSE/AVX registers, but it did not provide additional performance improvement.
 
+\input{src/alg-el}
+\input{src/alg-csr}
 
-\subsubsection{Explanation of \textit{mmap-custom} approach (Algorithm \ref{alg:el})}
+The psuedocode of the \textit{mmap-custom} approach is given in Algorithm \ref{alg:el}. It loads per-thread Edgelists from a file with the best performance, and is enacpsulated in the \texttt{readEdgelist()} function\ignore{(lines \ref{alg:el--read-edgelist-begin}-\ref{alg:el--read-edgelist-end})}. First, the counts of edges read per thread ($counts$) are initialized, and the components of per-thread Edgelists are obtained ($edges$) in lines \ref{alg:el--initialize-begin}-\ref{alg:el--initialize-end}. This is followed by a loop (lines \ref{alg:el--blocks-begin}-\ref{alg:el--blocks-end}), where each iteration processes a block of characters (of size $\beta = 256K$) in the text file in parallel across different threads. The text file is assumed to have been memory mapped as $data$. Inside the loop, $j$ keeps track of the number of edges processed by the current thread. In line \ref{alg:el--get-block}, the \texttt{getBlock()} function is called to retrieve the begin and end of current block of text ($[b, B]$), which is processed in the main loop (lines \ref{alg:el--block-begin}-\ref{alg:el--block-begin}). The main loop parses edges (lines \ref{alg:el--parse-edge-begin}-\ref{alg:el--parse-edge-end}), adjusts vertex indices to be zero-based (line \ref{alg:el--base1}), and adds them to the Edgelist of the current thread while updating per-partition vertex degrees with atomic operations (lines \ref{alg:el--add-edge-begin}-\ref{alg:el--add-edge-end}). Reverse edges are added for symmetric graphs (lines \ref{alg:el--reverse-edge-begin}-\ref{alg:el--reverse-edge-end}). Finally, counts of processed edges per thread are recorded (line \ref{alg:el--update-counts}) and returned (line \ref{alg:el--return-counts}).
 
-We now explain the psuedocode of \textit{mmap-custom} approach, which loads per-thread edgelists from a file with the best performance. Consider the \texttt{readEdgelist()} function. In Lines X-X various variables are initialized, including the counts of edges read per thread ($counts$), arrays for sources, targets, and weights ($edges$), and other parameters. This is followed by a loop (Lines X-X), where each iteration processes a block of characters in the text file in parallel across different threads. The loop iterates over block of $data$, starting from index $i$ with a step size of $\beta = 256K$. Inside the loop, $j$ keeps track of the number of edges processed by the current thread. In Line X, the \texttt{getBlock()} function is called to retrieve the current block of data ($[b, B]$). The algorithm then enters a While loop to read edges from the block in Line X-X. Edge information (source, target, weight) is parsed from the block, and, if the graph is weighted, the weight is also parsed. In Line X-X, Parsed edges are adjusted to be zero-based, and vertex degrees are updated in the pdegrees array. Then, in Lines X-X, the parsed edges are added to the arrays (sources, targets, weights) for the current thread. If the graph is symmetric, reverse edges are added as well. The loop continues until the entire block is processed, updating j and counting the number of edges processed by the current thread. Finally, the number of edges read by each thread are returned.
+The \texttt{getBlock()} function\ignore{(lines \ref{alg:el--get-block-begin}-\ref{alg:el--get-block-begin})} retrieves a block of characters to process\ignore{from the memory-mapped file}, starting from index $i$. It ensures that the block starts and ends on newline characters for proper parsing. The block size is determined by the parameter $\beta$, which is set to $256K$.
 
-The \texttt{getBlock()} function (Lines X-X) retrieves a block of characters to process from the memory-mapped file, starting from index $i$. It ensures that the block starts and ends on newline characters for proper parsing. The block size is determined by the parameter $\beta$, which is set to $256K$.
-
-\input{src/fig-optimize-el}
 
 
 
 \subsection{Converting Edgelist to CSR}
 
-\input{src/alg-csr}
+Now that we have obtained per-thread Edgelists, we must now convert the Edgelists to CSR. We attempt a few of approaches for this in steps, given in Sections \ref{sec:csr-degree-global}-\ref{sec:csr-csr-partition4}. Among these, we find that obtaining CSR from vertex degrees, where the vertex degrees are computed in four separate partitions using $\bmod$ operator with the current thread id, performs the best. The pseudocode for \textit{csr-partition4} is given in Algorithm \ref{alg:csr}.
 
 
 \subsubsection{Obtain global vertex degrees along with reading Edgelist (\textit{degree-global})}
+\label{sec:csr-degree-global}
 
-Now that we have obtained per-thread edgelists, we must now convert the edgelists to CSR. To do this, we first need to know the degree of each vertex. In this approach, A simple solution for this is to update the degree of each vertex in a common array, using atomic operations, while reading the edgelists. The relative runtime of this approach with respect to simple reading per-thread edgelists is XX, as shown in Figure \ref{fig:optimize-csr}. We however observe that this results in high contention and impacts performance.
+To convert the Edgelists to CSR, we first need to know the degree of each vertex. In this approach, we use a simple solution for this, i.e.,  we update the degree of each vertex in a single shared array using atomic operations, while reading Edgelists on each thread. The relative runtime of this approach with respect to simply reading per-thread Edgelists is $1.9\times$, as shown in Figure \ref{fig:optimize-csr}. We however observe that this results in high contention and impacts performance.
+
+\input{src/fig-optimize-csr}
 
 
 \subsubsection{Obtain per-thread vertex degrees along with reading Edgelist (\textit{degree-thread})}
+\label{sec:csr-degree-thread}
 
-In this approach, we compute per-thread vertex degrees instead of global degrees. While this improves performance by X\% compared to obtaining global vertex degrees, it requires significant additional space, and needs to be combined later to obtain global degrees. We observe that computing degrees in partitions of $4$ (using $\bmod 4$) and then combining them gives us the best performance.
+In this approach, we compute per-thread vertex degrees instead of global degrees. While this improves performance by $24\%$ compared to obtaining global vertex degrees, it requires significant additional space, and needs to be combined later to obtain global degrees. We observe that computing degrees in partitions of $4$ (using $\bmod 4$) and then combining them into a global degrees array gives us the best performance.
 
 
 \subsubsection{Obtain CSR from global vertex degrees (\textit{csr-global})}
+\label{sec:csr-csr-global}
 
-Now that we have the degrees, we need to combine the per-thread edgelists into a CSR data structure. In this approach, we first obtain global vertex degrees along with read per-thread edgelists (as with \textit{degree-global}), and the convert the per-thread edgelists to a global CSR in parallel using atomic operations. However, this approach has poor performance.
+Now that we have the degrees, we need to combine the per-thread Edgelists into a CSR data structure. In this approach, we first obtain global vertex degrees along with reading per-thread Edgelists (as with \textit{degree-global}), and then convert the per-thread Edgelists to a global CSR in parallel using atomic operations. As shown in Figure \ref{fig:optimize-csr}, this approach has poor performance (it is $11.4\times$ slower than simply reading Edgelists).
 
 
 \subsubsection{Obtain CSR from 4-partitioned vertex degrees (\textit{csr-partition4})}
+\label{sec:csr-csr-partition4}
 
-Next, we explore computing CSR in k partitions and later combining them. Our observations indicate that using 4 partitions to generate CSR and then combining them has the best performance.
+Finally, we explore computing CSR in $k$ separate partitions and later combining them into a single global CSR. The vertex degrees are also obtained in $k$ partitions while reading Edgelist, which is then used for generating partitioned CSR. We adjust the value of $k$ from $1$ to $16$. Our observations indicate that using $4$ partitions to generate CSR and then combining them has the best performance - it offers $2.9\times$ speedup over \textit{csr-global}.
 
-Now describe the figures and the algorithm.
-
-\input{src/fig-optimize-csr}
+The psuedocode of the \textit{csr-partition4} approach is given in Algorithm \ref{alg:csr}. It transforms an Edgelist representation of a graph into CSR format. First, the components of global CSR ($csr$), per-partition CSRs ($pcsr$), and per-thread Edgelists ($edges$) are obtained in lines \ref{alg:csr--initialize-begin}-\ref{alg:csr--initialize-end}. The algorithm then computes offsets for each partition in parallel (lines \ref{alg:csr--poffsets-begin}-\ref{alg:csr--poffsets-begin}) using exclusive scan operations, and updates the per-partition CSRs concurrently (lines \ref{alg:csr--pcsr-begin}-\ref{alg:csr--pcsr-end}). Atomic operations ensure thread safety when updating the matrices. In lines \ref{alg:csr--poffsets-fix-begin}-\ref{alg:csr--poffsets-fix-end}, per-partition offsets are fixed as they were updated during the edge insertion process above. The algorithm then combines per-partition degrees (lines \ref{alg:csr--poffsets-combine-begin}-\ref{alg:csr--poffsets-combine-end}), computes global offsets (line \ref{alg:csr--offsets-compute}), and merges the per-partition CSRs into the global CSR (lines \ref{alg:csr--pcsr-combine-begin}-\ref{alg:csr--pcsr-combine-begin}).
