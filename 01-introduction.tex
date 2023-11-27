@@ -9,7 +9,7 @@ However, fast graph loading is crucial for minimizing the time it takes to start
 
 \subsection{Our Contributions}
 
-This study introduces GVEL, an optimized approach for reading Edgelists from text files and converting them to Compressed Sparse Row (CSR) format. GVEL outperforms Hornet, Gunrock, and PIGO in CSR reading by $78\times$, $112\times$, and $1.8\times$, respectively. With Edgelist reading, GVEL outperforms PIGO by $2.6\times$, achieving read rate of $1.9$ billion edges/s. GVEL exhibits good strong scaling, with a $1.9\times$ improvement for Edgelist reading and a $1.7\times$ increase for CSR reading with every doubling of threads.
+This study introduces GVEL\footnote{https://github.com/puzzlef/graph-csr-openmp}, an optimized approach for reading Edgelists from text files and converting them to Compressed Sparse Row (CSR) format. GVEL outperforms Hornet, Gunrock, and PIGO in CSR reading by $78\times$, $112\times$, and $1.8\times$, respectively. With Edgelist reading, GVEL outperforms PIGO by $2.6\times$, achieving read rate of $1.9$ billion edges/s. GVEL exhibits good strong scaling, with a $1.9\times$ improvement for Edgelist reading and a $1.7\times$ increase for CSR reading with every doubling of threads.
 
 
 
