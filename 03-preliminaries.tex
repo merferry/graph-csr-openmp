@@ -13,6 +13,11 @@ Memory-mapped I/O (MMIO) is an access method that maps files or file-like resour
 
 MMIO has reduced overhead and eliminates copies between kernel and user space \cite{malliotakis2021hugemap, papagiannis2020optimizing}. Hot data typically resides in main memory, leveraging the benefits of a large cache, while cold data are stored on devices such as HDDs and SSDs \cite{song2016efficient}. The increasing adoption of MMIO is driven by its superior performance, particularly in comparison to file semantics like read/write operations which introduces significant overhead for fast storage \cite{yoshimura2019evfs, enberg2022transcending}. 
 
+%%
+
+Memory mapping is a mechanism that maps a file or part of a file into the virtual memory space, so that files on the disk can be accessed as if they were in memory \cite{lin2014mmap}.
+
+There are many advantages of using memory mapping, especially when processing large files. - Reading from and writing to a memory-mapped file do not require the data to be copied to and from a user-space buffer while standard read/write do. - Aside from any potential page faults, reading from and writing to a memory-mapped file do not incur any overhead due to context switching. - When multiple processes map the same data into memory, they can access that data simultaneously. Read-only and shared writable mappings are shared in their entirety; private writable mappings may have their not-yet-COW (copy-on-write) pages shared \cite{lin2014mmap}.
 
 
 

@@ -40,6 +40,8 @@ In this approach, we map the file to memory with \texttt{mmap()}, and process th
 
 This is similar to the approach mentioned above (\textit{mmap-strto*}), but we use our own functions for parsing whole numbers and floating-point numbers. In addition, as vertex ids start with $1$, we decrement $1$ from the vertex ids after parsing it and before appending them to per-thread Edgelists. Surprisingly, this leads to $40-50\%$ drop in performance. Converting the $weighted$ flag (see Algorithm \ref{alg:el}) to a template parameter solves this issue. This indicates that the issue was related to the loop code not being able to fit in the code cache of the processor and using a template allowed it to fit in the cache. Accordingly, we also recommend using $symmetric$ flag as a template parameter instead. With 64 threads, it provides a speedup of $3.5\times$ over \textit{mmap-strto*}. We also attempted to use custom SIMD instructions to parse numbers, along with \texttt{vzeroupper} instruction to clear SSE/AVX registers, but it did not provide additional performance improvement.
 
+\input{src/fig-adjust-blocksize}
+\input{src/fig-adjust-csrpartitions}
 \input{src/alg-el}
 \input{src/alg-csr}
 
