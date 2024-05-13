@@ -55,14 +55,11 @@ The \texttt{getBlock()} function\ignore{(lines \ref{alg:el--get-block-begin}-\re
 
 Now that we have obtained per-thread Edgelists, we must now convert the Edgelists to CSR. We attempt a few of approaches for this in steps, given in Sections \ref{sec:csr-degree-global}-\ref{sec:csr-csr-partition4}.
 
-\input{src/fig-optimize-csr}
-\input{src/fig-adjust-csrpartitions}
-
 
 \subsubsection{Obtain global vertex degrees along with reading Edgelist (\textit{degree-global})}
 \label{sec:csr-degree-global}
 
-To convert the Edgelists to CSR, we first need to know the degree of each vertex. In this approach, we use a simple solution for this, i.e.,  we update the degree of each vertex in a single shared array using atomic operations, while reading Edgelists on each thread. The relative runtime of this approach with respect to simply reading per-thread Edgelists is $1.9\times$, as shown in Figure \ref{fig:optimize-csr}. We however observe that this results in high contention and impacts performance.
+To convert the Edgelists to CSR, we first need to know the degree of each vertex. In this approach, we use a simple solution for this, i.e.,  we update the degree of each vertex in a single shared array using atomic operations, while reading Edgelists on each thread. The relative runtime of this approach with respect to simply reading per-thread Edgelists is $1.9\times$, as shown in Figure \ref{fig:optimize-csr}. We however observe that this results in high contention and negatively impacts performance.
 
 
 \subsubsection{Obtain per-thread vertex degrees along with reading Edgelist (\textit{degree-thread})}
@@ -76,11 +73,14 @@ In this approach, we compute per-thread vertex degrees instead of global degrees
 
 Now that we have the degrees, we need to combine the per-thread Edgelists into a CSR data structure. In this approach, we first obtain global vertex degrees along with reading per-thread Edgelists (as with \textit{degree-global}), and then convert the per-thread Edgelists to a global CSR in parallel using atomic operations. As shown in Figure \ref{fig:optimize-csr}, this approach has poor performance (it is $11.4\times$ slower than simply reading Edgelists).
 
+\input{src/fig-optimize-csr}
+\input{src/fig-adjust-csrpartitions}
+
 
 \subsubsection{Obtain CSR from 4-partitioned vertex degrees (\textit{csr-partition4})}
 \label{sec:csr-csr-partition4}
 
-Finally, we explore computing CSR in $k$ separate partitions and later combining them into a single global CSR. The vertex degrees are also obtained in $k$ partitions while reading Edgelist, which is then used for generating partitioned CSR. We adjust the value of $k$ from $1$ to $16$. Our observations indicate that using $4$ partitions to generate CSR and then combining them has the best performance - it offers $2.9\times$ speedup over \textit{csr-global}.
+Finally, we explore computing CSR in $k$ separate partitions and later combining them into a single global CSR. The vertex degrees are also obtained in $k$ partitions while reading Edgelist, which is then used for generating partitioned CSR. We adjust the value of $k$ from $2$ to $32$.\ignore{Figure \ref{fig:adjust-csrpartitions--convert} shows the relative runtime of converting in-memory Edgelists to CSR, with varying values of $k$, while} Figure \ref{fig:adjust-csrpartitions--full} shows the relative runtime of the overall process, i.e., reading graphs as CSRs. As the figure indicates, using a multi-staged approach for generating CSR, where the first stage generates CSR in $4$ separate partitions, while the second stage combines them into a global CSR, has the best performance --- it offers $2.9\times$ speedup over \textit{csr-global}, as shown in Figure \ref{fig:optimize-csr}.
 
 Among these, we find that obtaining CSR from vertex degrees, where the vertex degrees are computed in four separate partitions using $\bmod$ operator with the current thread id, performs the best. The pseudocode for \textit{csr-partition4} is given in Algorithm \ref{alg:csr}. It transforms an Edgelist representation of a graph into CSR format. First, the components of global CSR ($csr$), per-partition CSRs ($pcsr$), and per-thread Edgelists ($edges$) are obtained in lines \ref{alg:csr--initialize-begin}-\ref{alg:csr--initialize-end}. The algorithm then computes offsets for each partition in parallel (lines \ref{alg:csr--poffsets-begin}-\ref{alg:csr--poffsets-begin}) using exclusive scan operations, and updates the per-partition CSRs concurrently (lines \ref{alg:csr--pcsr-begin}-\ref{alg:csr--pcsr-end}). Atomic operations ensure thread safety when updating the matrices. In lines \ref{alg:csr--poffsets-fix-begin}-\ref{alg:csr--poffsets-fix-end}, per-partition offsets are fixed as they were updated during the edge insertion process above. The algorithm then combines per-partition degrees (lines \ref{alg:csr--poffsets-combine-begin}-\ref{alg:csr--poffsets-combine-end}), computes global offsets (line \ref{alg:csr--offsets-compute}), and merges the per-partition CSRs into the global CSR (lines \ref{alg:csr--pcsr-combine-begin}-\ref{alg:csr--pcsr-combine-begin}).
 
