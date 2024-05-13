@@ -1,13 +1,13 @@
 \begin{figure}[hbtp]
   \centering
-  \subfigure[CONVERT]{
+  \subfigure[Relative runtime for converting Edgelists to CSR]{
     \label{fig:adjust-csrpartitions--convert}
     \includegraphics[width=0.98\linewidth]{out/adjust-csrpartitions-convert.pdf}
   }
-  \subfigure[FULL]{
+  \subfigure[Relative runtime for reading graph as Edgelists, and converting to CSR]{
     \label{fig:adjust-csrpartitions--full}
     \includegraphics[width=0.98\linewidth]{out/adjust-csrpartitions-full.pdf}
   } \\[-2ex]
-  \caption{ADJUST CSR PARTITIONS.}
+  \caption{Relative runtime of reading per-thread Edgelists, obtaining $p$-partition degrees, converting to $p$-partition CSR, and combini to global CSR, with the number of partitions $p$ varying from $1$ to $32$. Here, $p > 1$ implies a multi-stage approach for generating CSR, which minimizes contention\ignore{between threads}.}
   \label{fig:adjust-csrpartitions}
 \end{figure}
