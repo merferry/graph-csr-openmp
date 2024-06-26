@@ -1,7 +1,7 @@
 \subsection{Experimental Setup}
 \label{sec:setup}
 
-We use a server that has two $16$-core x86-based Intel Xeon Gold 6226R processors running at $2.90$ GHz. Each core has an L1 cache of $1$ MB, an L2 cache of $16$ MB, and a shared L3 cache of $22$ MB. The machine has $93.4$ GB of system memory and runs on CentOS Stream 8. We use GCC 8.5 and OpenMP 4.5. Table \ref{tab:dataset} shows the graphs we use in our experiments. All of them are obtained from the SuiteSparse Matrix Collection \cite{kolodziej2019suitesparse}.
+We use a server that has two $16$-core x86-based Intel Xeon Gold 6226R processors running at $2.90$ GHz. Each core has an L1 cache of $1$ MB, an L2 cache of $16$ MB, and a shared L3 cache of $22$ MB. $40$ Micron 5200 ECO MTFDDAK480TDC-1AT1ZABYY $480$ GB SATA SSDs, each with a sequential $128$ KB read rate of up to $540$ MB/s and a random $4$ KB read rate of up to $95000$ IOPS, are installed on the server --- connected with a MegaRAID SAS-3 3008 SAS+SATA Controller. The machine has $512$ GB of system memory, and runs on CentOS Stream 8. We use GCC 8.5 and OpenMP 4.5. Table \ref{tab:dataset} shows the graphs we use in our experiments. All of them are obtained from the SuiteSparse Matrix Collection \cite{kolodziej2019suitesparse}.
 
 \input{src/tab-dataset}
 
@@ -22,10 +22,10 @@ We now compare the performance of GVEL for reading CSR, i.e. reading Edgelist an
 
 \subsection{Performance Comparison for Reading Edgelist}
 
-In Figure \ref{fig:compare-el}, we compare the performance of GVEL for reading Edgelist with PIGO. As before, we measure the Edgelist reading time with each framework five times, for averaging. GVEL is on average $2.6\times$ faster than PIGO - with little skew, i.e., GVEL is more or less equivalently faster than PIGO on all graphs. This is more probably than not, due to the reading of Edgelist being \textit{pleasingly parallel}. On the \textit{sk-2005} graph, GVEL achieves a reading performance of $1.9$ billion edges/s.
+In Figure \ref{fig:compare-el}, we compare the performance of GVEL for reading Edgelist with PIGO. As before, we measure the Edgelist reading time with each framework five times, for averaging. GVEL is on average $2.6\times$ faster than PIGO - with little skew, i.e., GVEL is more or less equivalently faster than PIGO on all graphs. This is more probably than not, due to the reading of Edgelist being \textit{pleasingly parallel}. On the \textit{sk-2005} graph, GVEL achieves a read performance of $1.9$ billion edges/s. Figure \ref{fig:runtime} illustrates the time GVEL requires to read the edge-list and convert it to CSR for each graph in the dataset, presented separately.
 
 \input{src/fig-compare-el}
-% \input{src/fig-runtime}
+\input{src/fig-runtime}
 
 
 
