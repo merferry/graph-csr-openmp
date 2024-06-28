@@ -1,7 +1,7 @@
 \subsection{Experimental Setup}
 \label{sec:setup}
 
-We use a server that has two $16$-core x86-based Intel Xeon Gold 6226R processors running at $2.90$ GHz. Each core has an L1 cache of $1$ MB, an L2 cache of $16$ MB, and a shared L3 cache of $22$ MB. $40$ Micron 5200 ECO MTFDDAK480TDC-1AT1ZABYY $480$ GB SATA SSDs, each with a sequential $128$ KB read rate of up to $540$ MB/s and a random $4$ KB read rate of up to $95000$ IOPS, are installed on the server --- connected with a MegaRAID SAS-3 3008 SAS+SATA Controller. The machine has $512$ GB of system memory, and runs on CentOS Stream 8. We use GCC 8.5 and OpenMP 4.5. Table \ref{tab:dataset} shows the graphs we use in our experiments. All of them are obtained from the SuiteSparse Matrix Collection \cite{kolodziej2019suitesparse}.
+We use a server that has two $16$-core x86-based Intel Xeon Gold 6226R processors running at $2.90$ GHz. Each core has an L1 cache of $1$ MB, an L2 cache of $16$ MB, and a shared L3 cache of $22$ MB. $12$ Seagate Exos 10e2400 $2.4$ TB SAS-12Gbps 2.5inch HDDs (DL2400MM0159), each with a rotational speed of $10k$ rpm, a sustained transfer rate of $241$ (outer diameter) to $117$ Mbps (inner diameter), and an average latency of $2.9$ ms, are installed on the server --- connected with a MegaRAID SAS-3 3008 SAS+SATA Controller. The machine has $512$ GB of system memory, and runs on CentOS Stream 8. We use GCC 8.5 and OpenMP 4.5. Table \ref{tab:dataset} shows the graphs we use in our experiments. All of them are obtained from the SuiteSparse Matrix Collection \cite{kolodziej2019suitesparse}.
 
 \input{src/tab-dataset}
 
